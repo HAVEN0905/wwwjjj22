@@ -16,7 +16,6 @@ const playCommand = require("./commands/play");
 global.currentResource = null;
 global.currentPlayer = null;
 global.currentConnection = null;
-global.leaveTimer = null;
 
 const client = new Client({
     intents: [
@@ -34,7 +33,7 @@ for (const file of fs.readdirSync("./commands")) {
 }
 
 client.once("clientReady", () => {
-    console.log(`🟢 봇 온라인: ${client.user.tag}`);
+    console.log(`🟢 HAVEN 봇 온라인: ${client.user.tag}`);
 });
 
 client.on("interactionCreate", async interaction => {
@@ -44,56 +43,54 @@ client.on("interactionCreate", async interaction => {
         if (command) return command.execute(interaction);
     }
 
-    /* ⏹ 재생 중지 */
-    if (interaction.isButton() && interaction.customId === "stop_music") {
-        playCommand.reset();
-        return interaction.reply({ content: "⏹ 재생 중지됨", ephemeral: true });
-    }
+    if (!interaction.isButton()) return;
 
-    /* ⏸ 일시정지 */
-    if (interaction.isButton() && interaction.customId === "pause_music") {
-        if (global.currentPlayer) global.currentPlayer.pause();
-        return interaction.reply({ content: "⏸ 일시정지", ephemeral: true });
-    }
+    switch (interaction.customId) {
 
-    /* ▶ 다시보기 */
-    if (interaction.isButton() && interaction.customId === "resume_music") {
-        if (global.currentPlayer) global.currentPlayer.unpause();
-        return interaction.reply({ content: "▶ 다시 재생", ephemeral: true });
-    }
+        case "stop_music":
+            playCommand.reset();
+            return interaction.reply({ content: "⏹ 재생 중지됨", ephemeral: true });
 
-    /* ⏭ 스킵 */
-    if (interaction.isButton() && interaction.customId === "skip_music") {
-        if (global.currentPlayer) global.currentPlayer.stop();
-        return interaction.reply({ content: "⏭ 스킵됨", ephemeral: true });
-    }
+        case "skip_music":
+            if (global.currentPlayer) global.currentPlayer.stop();
+            return interaction.reply({ content: "⏭ 스킵!", ephemeral: true });
 
-    /* 🔊 볼륨 */
-    if (interaction.isButton() && interaction.customId === "volume_music") {
+        case "restart_music":
+            playCommand.restart();
+            return interaction.reply({ content: "⏮ 처음부터 재생", ephemeral: true });
 
-        const modal = new ModalBuilder()
-            .setCustomId("volume_modal")
-            .setTitle("볼륨 조절");
+        case "random_music":
+            playCommand.randomNext();
+            return interaction.reply({ content: "🎲 랜덤 다음곡!", ephemeral: true });
 
-        const input = new TextInputBuilder()
-            .setCustomId("volume_input")
-            .setLabel("0~100")
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
+        case "pause_music":
+            if (global.currentPlayer) global.currentPlayer.pause();
+            return interaction.reply({ content: "⏸ 일시정지", ephemeral: true });
 
-        modal.addComponents(
-            new ActionRowBuilder().addComponents(input)
-        );
+        case "resume_music":
+            if (global.currentPlayer) global.currentPlayer.unpause();
+            return interaction.reply({ content: "▶ 재생!", ephemeral: true });
 
-        return interaction.showModal(modal);
+        case "volume_music":
+            const modal = new ModalBuilder()
+                .setCustomId("volume_modal")
+                .setTitle("볼륨 조절");
+
+            const input = new TextInputBuilder()
+                .setCustomId("volume_input")
+                .setLabel("0~100")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+            modal.addComponents(new ActionRowBuilder().addComponents(input));
+            return interaction.showModal(modal);
     }
 
     if (interaction.isModalSubmit() && interaction.customId === "volume_modal") {
 
         const value = Number(interaction.fields.getTextInputValue("volume_input"));
-
         if (isNaN(value) || value < 0 || value > 100)
-            return interaction.reply({ content: "0~100만 입력", ephemeral: true });
+            return interaction.reply({ content: "0~100만 입력!", ephemeral: true });
 
         playCommand.setVolume(value / 100);
 
